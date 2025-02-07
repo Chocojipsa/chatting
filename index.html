@@ -97,6 +97,7 @@
       const socket = new WebSocket("wss://root-shrouded-harmony.glitch.me/chat");
 
       socket.onopen = function () {
+        appendMessage("웹 연결 성공", "bot");
           console.log("WebSocket 연결 성공");
       };
 
