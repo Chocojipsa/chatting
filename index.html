@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemini 챗봇</title>
+    <title>채팅창</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -83,7 +83,7 @@
 <body>
     <div class="chat-container" id="chatContainer">
         <div class="chat-header">
-            <h2>GEMINI 챗봇</h2>
+            <h2>채팅창</h2>
             <button id="reset" style="width: 100px; margin-left: auto;">초기화</button>
         </div>
         <div id="chatHistory"></div>
@@ -94,73 +94,76 @@
     </div>
 
     <script>
-        const input = document.querySelector('input[type="text"]');
-        const resetButton = document.querySelector("#reset");
-        resetButton.addEventListener("click", function (event){
-            event.preventDefault();
-            const chatHistory = document.getElementById("chatHistory");
-            chatHistory.innerHTML = '';
-            localStorage.removeItem("messages");
-        });
-      
-        input.addEventListener('keydown', function(event) {
+      const socket = new WebSocket("wss://root-shrouded-harmony.glitch.me/chat");
+
+      socket.onopen = function () {
+          console.log("WebSocket 연결 성공");
+      };
+
+      socket.onmessage = function (event) {
+          const data = JSON.parse(event.data);
+          appendMessage(data.reply, "bot");
+      };
+
+      socket.onerror = function (error) {
+          console.error("WebSocket 오류 발생:", error);
+      };
+
+      socket.onclose = function () {
+          console.log("WebSocket 연결 종료");
+      };
+
+      document.querySelector("#reset").addEventListener("click", function (event) {
+          event.preventDefault();
+          document.getElementById("chatHistory").innerHTML = '';
+          localStorage.removeItem("messages");
+      });
+
+      document.querySelector("#userInput").addEventListener('keydown', function (event) {
           if (event.key === 'Enter') {
-            sendMessage();
+              sendMessage();
           }
-        });
+      });
 
-        async function sendMessage() {
-            const userMessage = document.getElementById("userInput").value;
-            if (!userMessage) {
-                alert("메시지를 입력하세요!");
-                return;
-            }
+      function sendMessage() {
+          const userMessage = document.getElementById("userInput").value;
+          if (!userMessage) {
+              alert("메시지를 입력하세요!");
+              return;
+          }
 
-            appendMessage(userMessage, "user");
+          appendMessage(userMessage, "user");
+          socket.send(userMessage);
+          document.getElementById("userInput").value = "";
+      }
 
-            const response = await fetch("/chat", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: userMessage })
-            });
+      function appendMessage(message, sender) {
+          const chatHistory = document.getElementById("chatHistory");
+          const messageElement = document.createElement("div");
+          messageElement.classList.add("message", `${sender}-message`);
+          messageElement.textContent = message;
+          chatHistory.appendChild(messageElement);
 
-            const data = await response.json();
-            if (data.reply) {
-                appendMessage(data.reply, "bot");
-            } else {
-                appendMessage("오류 발생!", "bot");
-            }
+          const messages = JSON.parse(localStorage.getItem('messages')) || [];
+          messages.push({ message: message, sender: sender });
+          localStorage.setItem('messages', JSON.stringify(messages));
+      }
 
-            document.getElementById("userInput").value = "";
-            const chatContainer = document.getElementById("chatContainer");
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
+      function showMessage() {
+          const messages = JSON.parse(localStorage.getItem('messages'));
+          if (messages) {
+              const chatHistory = document.getElementById("chatHistory");
+              messages.forEach((msg) => {
+                  const messageElement = document.createElement("div");
+                  messageElement.classList.add("message", `${msg.sender}-message`);
+                  messageElement.textContent = msg.message;
+                  chatHistory.appendChild(messageElement);
+              });
+          }
+      }
 
-        function appendMessage(message, sender) {
-            const chatHistory = document.getElementById("chatHistory");
-            const messageElement = document.createElement("div");
-            messageElement.classList.add("message", `${sender}-message`);
-            messageElement.textContent = message;
-            chatHistory.appendChild(messageElement);
-            const messages = JSON.parse(localStorage.getItem('messages')) || [];
-            messages.push({ message: message, sender: sender });
-            localStorage.setItem('messages', JSON.stringify(messages));
-        }
+      showMessage();
+  </script>
 
-        function showMessage() {
-            const messages = JSON.parse(localStorage.getItem('messages'));
-            if (messages) {
-                const chatHistory = document.getElementById("chatHistory");
-                messages.forEach((msg) => {
-                    const messageElement = document.createElement("div");
-                    messageElement.classList.add("message", `${msg.sender}-message`);
-                    messageElement.textContent = msg.message;
-                    chatHistory.appendChild(messageElement);
-                });
-            }
-        }
-
-        showMessage();
-    </script>
 </body>
 </html>
